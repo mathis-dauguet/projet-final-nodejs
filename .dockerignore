@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+**/node_modules
+**/dist
+coverage
+uploads
+storage
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Misc
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml
+*.log
+.DS_Store
+README.md
