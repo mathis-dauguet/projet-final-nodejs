@@ -18,3 +18,5 @@ storage/
 # Misc
 .DS_Store
 *.log
+
+/cours
