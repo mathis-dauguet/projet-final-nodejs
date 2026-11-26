@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { checkConfig, ConfigError, defaultSecurityHeaders, loadConfig, validateConfig } from '../src/core/config'
 import { testConfig } from './helpers'
+
+const secret = randomBytes(32).toString('hex')
 
 describe('loadConfig', () => {
   it('reads every value from the environment', () => {
@@ -9,7 +12,7 @@ describe('loadConfig', () => {
       HOST: '0.0.0.0',
       PORT: '8080',
       DATABASE_URL: 'postgres://db',
-      JWT_SECRET: 's'.repeat(32),
+      JWT_SECRET: secret,
       JWT_EXPIRES_IN: '60',
       BCRYPT_COST: '10',
       CORS_ENABLED: 'true',
@@ -27,7 +30,7 @@ describe('loadConfig', () => {
       host: '0.0.0.0',
       port: 8080,
       databaseUrl: 'postgres://db',
-      jwt: { secret: 's'.repeat(32), expiresIn: 60 },
+      jwt: { secret, expiresIn: 60 },
       bcryptCost: 10,
       cors: { enabled: true, origins: ['https://a.fr', 'https://b.fr'] },
       upload: { dir: '/data', maxSize: 100, allowedTypes: ['image/png'] },
