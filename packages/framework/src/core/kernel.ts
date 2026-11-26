@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { Route } from '../routing/router'
+import { Route, type Resolution } from '../routing/router'
 import { validateConfig } from './config'
 import { errorToResponse, HttpError } from './errors'
 import { compose } from './pipeline'
@@ -106,7 +106,13 @@ export class Kernel {
     } catch (err) {
       payload = toPayload(errorToResponse(err, production))
     }
-    await writePayload(res, payload)
+    try {
+      await writePayload(res, payload)
+    } catch (err) {
+      // writeHead refuse un en-tête ou un statut invalide renvoyé par un contrôleur :
+      // rien n'a encore été envoyé, on répond 500 au lieu de laisser fuir la promesse.
+      await writePayload(res, toPayload(errorToResponse(err, production)))
+    }
   }
 
   async #dispatch(req: IncomingMessage, res: ServerResponse): Promise<HttpResponse> {
@@ -131,7 +137,15 @@ export class Kernel {
     // Les middlewares globaux tournent même sans route (CORS, logs, 404 au bon format...).
     let routeMiddlewares: Middleware[] = []
     let handler: Handler
-    const resolution = Route.resolve(method, url.pathname)
+    let resolution: Resolution
+    try {
+      resolution = Route.resolve(method, url.pathname)
+    } catch (err) {
+      // URL mal encodée (400) : l'erreur passe quand même par les middlewares globaux.
+      return compose(this.#middlewares, () => {
+        throw err
+      })(ctx)
+    }
     ctx.version = resolution.version
 
     if (resolution.kind === 'found') {

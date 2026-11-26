@@ -134,10 +134,30 @@ describe('requests', () => {
     expect((await response.json()).error.code).toBe('METHOD_NOT_ALLOWED')
   })
 
-  it('answers 400 on a malformed encoding', async () => {
+  it('answers 400 on a malformed encoding, through the global middlewares', async () => {
+    const addHeader: Middleware = async (_ctx, next) => {
+      try {
+        return await next()
+      } catch (error) {
+        if (error instanceof HttpError) return json({ code: error.code }, error.status, { 'x-global': 'yes' })
+        throw error
+      }
+    }
     Route.get('/tags/{name}', () => json('x'))
+    const request = await boot({ middlewares: [addHeader] })
+    const response = await request('/tags/%E0%A4%A')
+    expect(response.status).toBe(400)
+    expect(response.headers.get('x-global')).toBe('yes')
+  })
+
+  it('answers 500 instead of crashing when a controller returns an invalid header or status', async () => {
+    Route.get('/bad-header', () => json('x', 200, { 'x-bad': 'a\nb' }))
+    Route.get('/bad-status', () => json('x', 99))
     const request = await boot()
-    expect((await request('/tags/%E0%A4%A')).status).toBe(400)
+    const badHeader = await request('/bad-header')
+    expect(badHeader.status).toBe(500)
+    expect((await badHeader.json()).error.code).toBe('INTERNAL_ERROR')
+    expect((await request('/bad-status')).status).toBe(500)
   })
 
   it('serves other formats', async () => {
